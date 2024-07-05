@@ -17,10 +17,11 @@
 
 void printHelp(char *progname)
 {
-    std::cout << "Usage: " << progname << " -p <port> -i <key>:<value> -g <key> -r <key>" << std::endl;
+    std::cout << "Usage: " << progname << " -p <port> [default:8080] -i <key>:<value> -g <key> -r <key>" << std::endl;
     std::cout << "  -i <key>:<value> | insert new key:value pair into hash table" << std::endl;
     std::cout << "  -g <key>         | get value from hash table by key" << std::endl;
     std::cout << "  -r <key>         | remove key from hash table" << std::endl;
+    std::cout << "You can use multiple insert/get/remove statements per program start" << std::endl;
 }
 
 enum TYPE
@@ -42,6 +43,7 @@ bool verifyRemove(std::string query);
 
 int main(int argc, char *argv[])
 {
+    // parse args and save given queries in vector
     std::vector<query> queries;
     int opt;
     int port = 8080;
@@ -95,12 +97,16 @@ int main(int argc, char *argv[])
                              "G:",
                              "R:" };
 
+    // iterate over saved queries
     for (query q : queries)
     {
+        // verify from of query
         if (!verify[q.type](q.arg))
         {
             continue;
         }
+
+        // create new socket and connect to server
         int clientSocket;
         CHECK(clientSocket = socket(AF_INET, SOCK_STREAM, 0), "socket() failed")
 
@@ -110,19 +116,22 @@ int main(int argc, char *argv[])
         serverAddres.sin_addr.s_addr = INADDR_ANY;
         CHECK(connect(clientSocket, (struct sockaddr *)&serverAddres, sizeof(serverAddres)), "connect() failed")
 
+        // construct query and send
         std::string req = prefix[q.type] + q.arg;
         CHECK(send(clientSocket, req.c_str(), strlen(req.c_str()), 0), "send() failed")
 
+        // receive answer
         char buf[1024];
         CHECK(recv(clientSocket, buf, sizeof(buf), 0), "recv() failed")
 
+        // print answer and close socket
         std::cout << "  " << buf << std::endl;
-
         CHECK(close(clientSocket), "close() failed")
     }
     return EXIT_SUCCESS;
 }
 
+// verify that query has exactly 1 ':' for form <key>:<value>
 bool verifyInsert(std::string query)
 {
     std::cout << "INSERT " << query << std::endl;
@@ -135,6 +144,7 @@ bool verifyInsert(std::string query)
     return true;
 }
 
+// verify that query has no ':' for form <key>
 bool verifyGet(std::string query)
 {
     std::cout << "GET " << query << std::endl;
@@ -147,6 +157,7 @@ bool verifyGet(std::string query)
     return true;
 }
 
+// verify that query has no ':' for form <key>
 bool verifyRemove(std::string query)
 {
     std::cout << "REMOVE " << query << std::endl;
