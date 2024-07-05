@@ -1,0 +1,6 @@
+# IDE files
+.vscode
+
+# compiled binaries
+Client
+Server
